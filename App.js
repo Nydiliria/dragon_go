@@ -1,94 +1,56 @@
-import React, {useState, useEffect} from 'react';
-import {View, StyleSheet, ActivityIndicator} from 'react-native';
-import MapView, {Marker} from 'react-native-maps';
-import * as Location from 'expo-location';
+import React from 'react';
+import {NavigationContainer} from '@react-navigation/native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+
+// Importeer je eigen Context & Schermen
+import {SettingsProvider} from './src/context/SettingsContext';
+import MapScreen from './src/screens/MapScreen';
+import ListScreen from './src/screens/ListScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+
+// Maak de Tab Navigator aan
+const Tab = createBottomTabNavigator();
 
 export default function App() {
-    const [location, setLocation] = useState(null);
-    const [path, setPath] = useState([]);
-    const [errorMsg, setErrorMsg] = useState(null);
-
-    useEffect(() => {
-        let runner;
-
-        async function startTracking() {
-            let {status} = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setErrorMsg('Toegang tot locatie geweigerd');
-                return;
-            }
-
-            runner = await Location.watchPositionAsync(
-                {
-                    accuracy: Location.Accuracy.High,
-                    distanceInterval: 0.5,
-                    timeInterval: 5000,
-                },
-                (newLocation) => {
-                    const {latitude, longitude} = newLocation.coords;
-
-                    const newCoords = {
-                        latitude,
-                        longitude,
-                        latitudeDelta: 0.0122,
-                        longitudeDelta: 0.0121,
-                    };
-
-
-                    setLocation(newCoords);
-                    setPath((prevPath) => [...prevPath, {latitude, longitude}]);
-                }
-            );
-        }
-
-        startTracking();
-
-        return () => {
-            if (runner) {
-                runner.remove();
-            }
-        };
-    }, []);
-
-    if (!location) {
-        return (
-            <View style={styles.container}>
-                <ActivityIndicator size="large" color="#0000ff"/>
-            </View>
-        );
-    }
-
     return (
-        <View style={styles.container}>
-            <MapView
-                style={styles.map}
-                region={location}
-                showsUserLocation={true}
-            >
-                {path.map((point, index) => (
-                    <Marker
-                        key={`path-${index}`}
-                        coordinate={point}
-                        opacity={0.6}
+        // De Provider zorgt ervoor dat de layout-modus op ELK scherm werkt
+        <SettingsProvider>
+            <NavigationContainer>
+                <Tab.Navigator
+                    screenOptions={{
+                        headerStyle: {
+                            backgroundColor: '#3b82f6',
+                        },
+                        headerTintColor: '#fff',
+                        headerTitleStyle: {
+                            fontWeight: 'bold',
+                        },
+                        tabBarActiveTintColor: '#3b82f6',
+                        tabBarInactiveTintColor: 'gray',
+                    }}
+                >
+                    {/* Scherm 1: De Lijst met hotspots */}
+                    <Tab.Screen
+                        name="Lijst"
+                        component={ListScreen}
+                        options={{title: 'Hotspots'}}
                     />
-                ))}
-                <Marker
-                    coordinate={location}
-                    title="Je bent hier"
-                    pinColor="red"
-                />
-            </MapView>
-        </View>
+
+                    {/* Scherm 2: De Leaflet Kaart */}
+                    <Tab.Screen
+                        name="Kaart"
+                        component={MapScreen}
+                        options={{title: 'Interactieve Kaart'}}
+                    />
+
+                    {/* Scherm 3: Instellingen voor de lay-out */}
+                    <Tab.Screen
+                        name="Instellingen"
+                        component={SettingsScreen}
+                        options={{title: 'Instellingen'}}
+                    />
+                </Tab.Navigator>
+            </NavigationContainer>
+        </SettingsProvider>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    map: {
-        width: '100%',
-        height: '100%',
-    },
-});
